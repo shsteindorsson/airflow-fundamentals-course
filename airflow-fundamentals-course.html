@@ -130,6 +130,7 @@ pre {
   overflow-x: auto; font-size: 13.5px; line-height: 1.55;
 }
 pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; white-space: pre; }
+p.shell-alt { margin: -12px 0 8px; color: var(--muted); font-size: 13.5px; }
 
 .table-wrap { overflow-x: auto; margin: 0 0 22px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
 table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.45; }
@@ -246,6 +247,7 @@ figure.diagram figcaption { color: var(--muted); font-size: 13px; padding: 6px 1
 <pre tabindex="0"><code>airflow-course/
 ├── pyproject.toml
 ├── env.sh                 # environment variables, sourced in every terminal
+├── env.fish               # same variables in fish syntax (set -gx)
 ├── docker-compose.yml     # Postgres only
 ├── dags/
 │   └── weather_etl.py     # thin: wiring only
@@ -276,6 +278,17 @@ CONSTRAINT_URL=&quot;https://raw.githubusercontent.com/apache/airflow/constraint
 uv pip install &quot;apache-airflow==${AIRFLOW_VERSION}&quot; apache-airflow-providers-postgres --constraint &quot;${CONSTRAINT_URL}&quot;
 uv pip install -e &quot;.[dev]&quot; --constraint &quot;${CONSTRAINT_URL}&quot;
 </code></pre>
+<p class="shell-alt">fish shell: assignments are <code>set VAR value</code>, command substitution is <code>(...)</code> instead of <code>$(...)</code>, and the venv uses <code>activate.fish</code>:</p>
+<pre tabindex="0"><code class="language-fish">uv venv --python 3.14
+source .venv/bin/activate.fish
+
+set AIRFLOW_VERSION 3.4.0
+set PYTHON_VERSION (python -c 'import sys; print(f&quot;{sys.version_info.major}.{sys.version_info.minor}&quot;)')
+set CONSTRAINT_URL &quot;https://raw.githubusercontent.com/apache/airflow/constraints-$AIRFLOW_VERSION/constraints-$PYTHON_VERSION.txt&quot;
+
+uv pip install &quot;apache-airflow==$AIRFLOW_VERSION&quot; apache-airflow-providers-postgres --constraint &quot;$CONSTRAINT_URL&quot;
+uv pip install -e &quot;.[dev]&quot; --constraint &quot;$CONSTRAINT_URL&quot;
+</code></pre>
 <p>The constraints file pins every dependency to versions tested with that release. Always pass it, including when installing your own package.</p>
 <h3 id="exercise-01-write-pyprojecttoml">Exercise 0.1: write <code>pyproject.toml</code></h3>
 <p>Write it yourself using the <a href="https://packaging.python.org/en/latest/guides/writing-pyproject-toml/">packaging guide</a>. Requirements:</p>
@@ -295,11 +308,18 @@ export AIRFLOW__CORE__LOAD_EXAMPLES=False
 export AIRFLOW_CONN_WEATHER_DB='postgres://weather:weather@localhost:5433/weather'
 export WEATHER_DATA_DIR=&quot;$PWD/data&quot;
 </code></pre>
-<p>Any <code>AIRFLOW__SECTION__KEY</code> variable overrides <code>airflow.cfg</code>, and any <code>AIRFLOW_CONN_&lt;ID&gt;</code> variable defines a connection without touching the database. Source this file in every terminal you use: a terminal without it gets a different <code>AIRFLOW_HOME</code>, database and password.</p>
+<p class="shell-alt">fish shell: save these as <code>env.fish</code> using <code>set -gx</code> (global + exported, fish&rsquo;s equivalent of <code>export</code>):</p>
+<pre tabindex="0"><code class="language-fish">set -gx AIRFLOW_HOME &quot;$PWD/.airflow&quot;
+set -gx AIRFLOW__CORE__DAGS_FOLDER &quot;$PWD/dags&quot;
+set -gx AIRFLOW__CORE__LOAD_EXAMPLES False
+set -gx AIRFLOW_CONN_WEATHER_DB 'postgres://weather:weather@localhost:5433/weather'
+set -gx WEATHER_DATA_DIR &quot;$PWD/data&quot;
+</code></pre>
+<p>Any <code>AIRFLOW__SECTION__KEY</code> variable overrides <code>airflow.cfg</code>, and any <code>AIRFLOW_CONN_&lt;ID&gt;</code> variable defines a connection without touching the database. Source this file in every terminal you use (fish shell: <code>source env.fish</code>): a terminal without it gets a different <code>AIRFLOW_HOME</code>, database and password.</p>
 <p>Write <code>docker-compose.yml</code> yourself: one service, image <code>postgres:17</code>, user, password and database all <code>weather</code>, host port 5433 mapped to 5432 (avoids clashing with a local Postgres), and a named volume. Add a healthcheck using <code>pg_isready</code>.</p>
 <h3 id="checkpoint-0">Checkpoint 0</h3>
 <ul>
-<li class="task"><input type="checkbox" id="cb1" data-key="cb1"><label for="cb1"><code>source env.sh &amp;&amp; airflow standalone</code> prints <code>Airflow is ready</code>; you can log in at <code>http://localhost:8080</code> with the password from <code>.airflow/simple_auth_manager_passwords.json.generated</code>.</label></li>
+<li class="task"><input type="checkbox" id="cb1" data-key="cb1"><label for="cb1"><code>source env.sh &amp;&amp; airflow standalone</code> (fish: <code>source env.fish &amp;&amp; airflow standalone</code>) prints <code>Airflow is ready</code>; you can log in at <code>http://localhost:8080</code> with the password from <code>.airflow/simple_auth_manager_passwords.json.generated</code>.</label></li>
 <li class="task"><input type="checkbox" id="cb2" data-key="cb2"><label for="cb2"><code>docker compose ps</code> shows Postgres as healthy, and <code>docker compose exec weather-db psql -U weather -c 'select 1'</code> returns 1.</label></li>
 <li class="task"><input type="checkbox" id="cb3" data-key="cb3"><label for="cb3"><code>python -c "import weather"</code> works and <code>pytest</code> runs (zero tests is fine).</label></li>
 <li class="task"><input type="checkbox" id="cb4" data-key="cb4"><label for="cb4"><code>.airflow/</code>, <code>data/</code> and <code>.venv/</code> are in <code>.gitignore</code>, and the project is a git repo. Commit at every checkpoint.</label></li>
@@ -859,7 +879,7 @@ def upsert_summaries(conn: DbApiConnection, summaries: Sequence[DailySummary]) -
 </thead>
 <tbody>
 <tr>
-<td><code>source .venv/bin/activate &amp;&amp; source env.sh</code></td>
+<td><code>source .venv/bin/activate &amp;&amp; source env.sh</code><br>fish: <code>source .venv/bin/activate.fish &amp;&amp; source env.fish</code></td>
 <td>Start of every terminal session</td>
 </tr>
 <tr>
