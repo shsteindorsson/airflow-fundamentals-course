@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Airflow Fundamentals: A Hands-On ETL Course</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #f4f6f5;
+  --surface: #ffffff;
+  --ink: #17201e;
+  --muted: #56625f;
+  --rule: #d3dbd8;
+  --accent: #1e6b5a;
+  --accent-soft: #dcebe6;
+  --code-bg: #e8eeeb;
+  --code-ink: #1d2a27;
+  --done: #1e6b5a;
+  --sans: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #111715;
+    --surface: #171f1d;
+    --ink: #e2e9e6;
+    --muted: #98a6a1;
+    --rule: #2b3532;
+    --accent: #63c2a7;
+    --accent-soft: #1c302a;
+    --code-bg: #1b2422;
+    --code-ink: #d6e2de;
+    --done: #63c2a7;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 24px; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible, pre:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: 56px;
+  padding: 0 32px;
+}
+
+/* Sidebar */
+aside {
+  position: sticky; top: 0; align-self: start;
+  height: 100vh; overflow-y: auto;
+  padding: 40px 0 32px;
+}
+.brand { font-weight: 800; font-size: 15px; line-height: 1.3; letter-spacing: -0.01em; margin: 0 0 4px; }
+.brand-sub { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+.overall { border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 14px 0; margin-bottom: 14px; }
+.overall-num { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.overall-num small { font-size: 15px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+.overall-label { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.reset { margin-top: 10px; background: none; border: 1px solid var(--rule); color: var(--muted); font: inherit; font-size: 12.5px; padding: 3px 10px; border-radius: 6px; cursor: pointer; }
+.reset:hover { color: var(--ink); border-color: var(--muted); }
+details.toc > summary { display: none; }
+.toc ol { list-style: none; margin: 0; padding: 0; }
+.toc li a {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 8px;
+  padding: 7px 10px; margin: 0 -10px; border-radius: 6px;
+  color: var(--ink); text-decoration: none; font-size: 14px; line-height: 1.35;
+}
+.toc li a:hover { background: var(--accent-soft); }
+.toc li a.current { background: var(--accent-soft); font-weight: 600; }
+.nav-count { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; align-self: center; }
+.nav-bar { grid-column: 1 / -1; height: 3px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.nav-bar span { display: block; height: 100%; width: 0; background: var(--done); transition: width .25s ease; }
+.nav-bar:empty, .nav-bar.hidden { display: none; }
+.toc li a.complete .nav-count { color: var(--done); font-weight: 600; }
+
+/* Main */
+main { padding: 56px 0 120px; max-width: 74ch; min-width: 0; }
+header.hero { margin-bottom: 48px; }
+header.hero h1 {
+  font-size: clamp(34px, 5vw, 52px); line-height: 1.04; letter-spacing: -0.035em;
+  font-weight: 800; margin: 0 0 16px;
+}
+header.hero p { color: var(--muted); margin: 0; font-size: 16px; }
+.pipeline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 22px; font-family: var(--mono); font-size: 14px; }
+.pipeline span.stage { border: 1.5px solid var(--accent); color: var(--accent); padding: 3px 10px; border-radius: 6px; font-weight: 600; }
+.pipeline span.arrow { color: var(--muted); }
+
+section { padding-top: 8px; }
+h2 {
+  font-size: 30px; line-height: 1.15; letter-spacing: -0.025em; font-weight: 800;
+  margin: 72px 0 18px; padding-top: 24px; border-top: 2px solid var(--ink);
+}
+section:first-of-type h2 { margin-top: 0; }
+h3 { font-size: 19px; line-height: 1.3; letter-spacing: -0.01em; font-weight: 700; margin: 40px 0 10px; }
+p { margin: 0 0 16px; }
+ul, ol { margin: 0 0 18px; padding-left: 1.4em; }
+li { margin: 4px 0; }
+li > p { margin: 0; }
+strong { font-weight: 700; }
+
+code {
+  font-family: var(--mono); font-size: 0.84em;
+  background: var(--code-bg); color: var(--code-ink);
+  padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere;
+}
+pre {
+  background: var(--code-bg); color: var(--code-ink);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 16px 18px; margin: 0 0 20px;
+  overflow-x: auto; font-size: 13.5px; line-height: 1.55;
+}
+pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; white-space: pre; }
+
+.table-wrap { overflow-x: auto; margin: 0 0 22px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.45; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+th { font-weight: 700; background: var(--accent-soft); }
+tr:last-child td { border-bottom: none; }
+td:first-child { font-weight: 600; }
+
+/* Checkpoints */
+li.task { list-style: none; display: flex; gap: 10px; align-items: flex-start; margin: 8px 0 8px -1.4em; }
+li.task input {
+  appearance: none; -webkit-appearance: none; flex: none;
+  width: 20px; height: 20px; margin: 3px 0 0;
+  border: 2px solid var(--muted); border-radius: 5px; background: var(--surface);
+  display: grid; place-content: center; cursor: pointer;
+}
+li.task input::after { content: ""; width: 10px; height: 6px; border-left: 2.5px solid var(--paper); border-bottom: 2.5px solid var(--paper); transform: rotate(-45deg) translate(1px, -1px); opacity: 0; }
+li.task input:checked { background: var(--done); border-color: var(--done); }
+li.task input:checked::after { opacity: 1; }
+li.task label { cursor: pointer; }
+li.task input:checked + label { color: var(--muted); }
+
+/* Diagram */
+figure.diagram { margin: 28px 0 16px; padding: 16px 8px 8px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+figure.diagram svg { display: block; width: 100%; height: auto; font-family: var(--sans); }
+figure.diagram figcaption { color: var(--muted); font-size: 13px; padding: 6px 16px 4px; }
+.d-ink { fill: var(--ink); }
+.d-muted { fill: var(--muted); }
+.d-line { stroke: var(--muted); }
+.d-head { fill: var(--muted); }
+.d-box { fill: none; stroke: var(--muted); stroke-width: 1.25; }
+.d-accent { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; gap: 0; padding: 0 20px; }
+  aside { position: static; height: auto; padding: 24px 0 0; overflow: visible; }
+  details.toc > summary { display: list-item; cursor: pointer; font-weight: 600; font-size: 15px; padding: 6px 0; }
+  main { padding-top: 32px; }
+  h2 { font-size: 25px; margin-top: 56px; }
+  body { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .nav-bar span { transition: none; } }
+@media print {
+  aside { display: none; }
+  .layout { display: block; }
+  pre { white-space: pre-wrap; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside aria-label="Course navigation">
+    <p class="brand">Airflow Fundamentals</p>
+    <p class="brand-sub">A hands-on ETL course</p>
+    <div class="overall" aria-live="polite">
+      <div class="overall-num"><span id="done-count">0</span> <small>/ <span id="total-count">0</span></small></div>
+      <div class="overall-label">checkpoint items done, saved in this browser</div>
+      <button class="reset" type="button" id="reset">Clear progress</button>
+    </div>
+    <details class="toc" open>
+      <summary>Modules</summary>
+      <ol>
+<li><a href="#how-to-use-this-course" data-nav="how-to-use-this-course"><span class="nav-title">How to use this course</span><span class="nav-count" data-count="how-to-use-this-course"></span><span class="nav-bar"><span data-bar="how-to-use-this-course"></span></span></a></li>
+<li><a href="#module-0-local-setup-about-1-hour" data-nav="module-0-local-setup-about-1-hour"><span class="nav-title">Module 0: Local setup</span><span class="nav-count" data-count="module-0-local-setup-about-1-hour"></span><span class="nav-bar"><span data-bar="module-0-local-setup-about-1-hour"></span></span></a></li>
+<li><a href="#module-1-the-mental-model-about-1-hour" data-nav="module-1-the-mental-model-about-1-hour"><span class="nav-title">Module 1: The mental model</span><span class="nav-count" data-count="module-1-the-mental-model-about-1-hour"></span><span class="nav-bar"><span data-bar="module-1-the-mental-model-about-1-hour"></span></span></a></li>
+<li><a href="#module-2-your-first-dag-with-taskflow-about-15-hours" data-nav="module-2-your-first-dag-with-taskflow-about-15-hours"><span class="nav-title">Module 2: Your first Dag with TaskFlow</span><span class="nav-count" data-count="module-2-your-first-dag-with-taskflow-about-15-hours"></span><span class="nav-bar"><span data-bar="module-2-your-first-dag-with-taskflow-about-15-hours"></span></span></a></li>
+<li><a href="#module-3-extract-about-25-hours" data-nav="module-3-extract-about-25-hours"><span class="nav-title">Module 3: Extract</span><span class="nav-count" data-count="module-3-extract-about-25-hours"></span><span class="nav-bar"><span data-bar="module-3-extract-about-25-hours"></span></span></a></li>
+<li><a href="#module-4-parse-about-25-hours" data-nav="module-4-parse-about-25-hours"><span class="nav-title">Module 4: Parse</span><span class="nav-count" data-count="module-4-parse-about-25-hours"></span><span class="nav-bar"><span data-bar="module-4-parse-about-25-hours"></span></span></a></li>
+<li><a href="#module-5-transform-about-15-hours" data-nav="module-5-transform-about-15-hours"><span class="nav-title">Module 5: Transform</span><span class="nav-count" data-count="module-5-transform-about-15-hours"></span><span class="nav-bar"><span data-bar="module-5-transform-about-15-hours"></span></span></a></li>
+<li><a href="#module-6-load-about-2-hours" data-nav="module-6-load-about-2-hours"><span class="nav-title">Module 6: Load</span><span class="nav-count" data-count="module-6-load-about-2-hours"></span><span class="nav-bar"><span data-bar="module-6-load-about-2-hours"></span></span></a></li>
+<li><a href="#module-7-testing-the-dag-about-2-hours" data-nav="module-7-testing-the-dag-about-2-hours"><span class="nav-title">Module 7: Testing the Dag</span><span class="nav-count" data-count="module-7-testing-the-dag-about-2-hours"></span><span class="nav-bar"><span data-bar="module-7-testing-the-dag-about-2-hours"></span></span></a></li>
+<li><a href="#module-8-scheduling-backfills-and-retries-about-25-hours" data-nav="module-8-scheduling-backfills-and-retries-about-25-hours"><span class="nav-title">Module 8: Scheduling, backfills and retries</span><span class="nav-count" data-count="module-8-scheduling-backfills-and-retries-about-25-hours"></span><span class="nav-bar"><span data-bar="module-8-scheduling-backfills-and-retries-about-25-hours"></span></span></a></li>
+<li><a href="#module-9-capstone-and-stretch-goals-open-ended" data-nav="module-9-capstone-and-stretch-goals-open-ended"><span class="nav-title">Module 9: Capstone and stretch goals</span><span class="nav-count" data-count="module-9-capstone-and-stretch-goals-open-ended"></span><span class="nav-bar"><span data-bar="module-9-capstone-and-stretch-goals-open-ended"></span></span></a></li>
+<li><a href="#reference" data-nav="reference"><span class="nav-title">Reference</span><span class="nav-count" data-count="reference"></span><span class="nav-bar"><span data-bar="reference"></span></span></a></li>
+      </ol>
+    </details>
+  </aside>
+  <main>
+    <header class="hero">
+      <h1>Airflow Fundamentals: A Hands-On ETL Course</h1>
+      <p>Written for Airflow 3.4.0 and Python 3.14, November 2026. You write the code and the tests; the course gives you specs, signatures and checkpoints.</p>
+      <div class="pipeline" aria-label="Pipeline stages">
+        <span class="stage">extract</span><span class="arrow" aria-hidden="true">›</span>
+        <span class="stage">parse</span><span class="arrow" aria-hidden="true">›</span>
+        <span class="stage">transform</span><span class="arrow" aria-hidden="true">›</span>
+        <span class="stage">load</span>
+      </div>
+    </header>
+<section id="sec-how-to-use-this-course" data-sec="how-to-use-this-course"><h2 id="how-to-use-this-course">How to use this course</h2>
+<p>You will build one real pipeline, <code>weather_etl</code>, over ten modules: extract hourly weather from the free <a href="https://open-meteo.com/en/docs/historical-weather-api">Open-Meteo</a> API, parse the raw JSON into validated records, transform them into daily summaries, and load them into Postgres. No API key is needed; a keyed API is a stretch goal in Module 9.</p>
+<p>The course gives you specs, function signatures, acceptance criteria and hints. You write the implementation and the tests. Only Airflow boilerplate you cannot reasonably guess is shown in full.</p>
+<p><strong>Budget:</strong> roughly 15 to 20 hours. Each module ends with a checkpoint; do not move on until it passes.</p>
+<p><strong>Prerequisites:</strong> comfortable with Python functions, dicts and lists; basic terminal use; Docker installed (for Postgres only). Windows users need WSL2.</p>
+<p><strong>Ground rules that make you better at Python:</strong></p>
+<ul>
+<li>Keep business logic in plain Python modules under <code>src/</code>. DAG files only wire tasks together. This is what makes the code testable without Airflow running.</li>
+<li>Write the test before or alongside each function, never after the whole module is done.</li>
+<li>Use type hints everywhere and run <code>ruff</code> and <code>mypy</code> before each checkpoint.</li>
+<li>When stuck, read the official docs page linked in the module before searching elsewhere.</li>
+</ul>
+<p><strong>The pipeline you will build:</strong></p>
+<ol>
+<li><code>extract</code> — call the API for one day and save the raw response to disk, untouched.</li>
+<li><code>parse</code> — read the raw file, validate its shape, and turn parallel arrays into typed records.</li>
+<li><code>transform</code> — aggregate hourly records into one daily summary per city.</li>
+<li><code>load</code> — upsert the summaries into Postgres so reruns never create duplicates.</li>
+</ol>
+</section>
+<section id="sec-module-0-local-setup-about-1-hour" data-sec="module-0-local-setup-about-1-hour"><h2 id="module-0-local-setup-about-1-hour">Module 0: Local setup (about 1 hour)</h2>
+<p>You will run Airflow 3.4.0, the current stable release, with <code>airflow standalone</code> in a uv virtual environment, plus Postgres in Docker as the load target. Standalone runs the scheduler, Dag processor, triggerer and API server together on SQLite, which is right for local development (<a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/start.html">Quick Start</a>).</p>
+<p><strong>Use Python 3.14.</strong> Airflow 3.4 supports Python 3.10 to 3.14 and publishes a constraints file for 3.14, so every pinned dependency below installs cleanly on it. Python 3.12 and 3.13 also work if you already have them.</p>
+<h3 id="project-layout">Project layout</h3>
+<p>Create this structure yourself. Empty files are fine for now.</p>
+<pre tabindex="0"><code>airflow-course/
+├── pyproject.toml
+├── env.sh                 # environment variables, sourced in every terminal
+├── docker-compose.yml     # Postgres only
+├── dags/
+│   └── weather_etl.py     # thin: wiring only
+├── src/weather/
+│   ├── __init__.py
+│   ├── config.py          # cities, API URL, paths
+│   ├── models.py          # dataclasses
+│   ├── extract.py
+│   ├── parse.py
+│   ├── transform.py
+│   └── load.py
+├── sql/
+│   └── create_tables.sql
+├── tests/
+│   ├── conftest.py
+│   ├── fixtures/          # sample API responses
+│   └── test_*.py
+└── data/                  # raw and staged files, git-ignored
+</code></pre>
+<h3 id="install">Install</h3>
+<pre tabindex="0"><code class="language-bash">uv venv --python 3.14
+source .venv/bin/activate
+
+AIRFLOW_VERSION=3.4.0
+PYTHON_VERSION=&quot;$(python -c 'import sys; print(f&quot;{sys.version_info.major}.{sys.version_info.minor}&quot;)')&quot;
+CONSTRAINT_URL=&quot;https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt&quot;
+
+uv pip install &quot;apache-airflow==${AIRFLOW_VERSION}&quot; apache-airflow-providers-postgres --constraint &quot;${CONSTRAINT_URL}&quot;
+uv pip install -e &quot;.[dev]&quot; --constraint &quot;${CONSTRAINT_URL}&quot;
+</code></pre>
+<p>The constraints file pins every dependency to versions tested with that release. Always pass it, including when installing your own package.</p>
+<h3 id="exercise-01-write-pyprojecttoml">Exercise 0.1: write <code>pyproject.toml</code></h3>
+<p>Write it yourself using the <a href="https://packaging.python.org/en/latest/guides/writing-pyproject-toml/">packaging guide</a>. Requirements:</p>
+<ul>
+<li>Package name <code>weather</code>, source in <code>src/</code> (the &ldquo;src layout&rdquo;), build backend of your choice (hatchling is simplest).</li>
+<li>Runtime dependency: <code>requests</code>.</li>
+<li>An optional <code>dev</code> group: <code>pytest</code>, <code>ruff</code>, <code>mypy</code>, <code>types-requests</code>.</li>
+<li>A <code>[tool.pytest.ini_options]</code> section with <code>testpaths = ["tests"]</code>.</li>
+<li>A <code>[tool.ruff.lint]</code> section that selects at least <code>E</code>, <code>F</code>, <code>I</code>, <code>B</code> and <code>AIR</code>. The <code>AIR</code> rules catch Airflow-specific mistakes such as removed Airflow 2 imports.</li>
+</ul>
+<p>Why editable install (<code>-e</code>)? Airflow imports your Dag file, which imports <code>weather.extract</code>. The package must be importable from the same environment Airflow runs in.</p>
+<h3 id="exercise-02-envsh-and-postgres">Exercise 0.2: <code>env.sh</code> and Postgres</h3>
+<p><code>env.sh</code> keeps Airflow&rsquo;s state inside the project and points it at your Dags:</p>
+<pre tabindex="0"><code class="language-bash">export AIRFLOW_HOME=&quot;$PWD/.airflow&quot;
+export AIRFLOW__CORE__DAGS_FOLDER=&quot;$PWD/dags&quot;
+export AIRFLOW__CORE__LOAD_EXAMPLES=False
+export AIRFLOW_CONN_WEATHER_DB='postgres://weather:weather@localhost:5433/weather'
+export WEATHER_DATA_DIR=&quot;$PWD/data&quot;
+</code></pre>
+<p>Any <code>AIRFLOW__SECTION__KEY</code> variable overrides <code>airflow.cfg</code>, and any <code>AIRFLOW_CONN_&lt;ID&gt;</code> variable defines a connection without touching the database. Source this file in every terminal you use: a terminal without it gets a different <code>AIRFLOW_HOME</code>, database and password.</p>
+<p>Write <code>docker-compose.yml</code> yourself: one service, image <code>postgres:17</code>, user, password and database all <code>weather</code>, host port 5433 mapped to 5432 (avoids clashing with a local Postgres), and a named volume. Add a healthcheck using <code>pg_isready</code>.</p>
+<h3 id="checkpoint-0">Checkpoint 0</h3>
+<ul>
+<li class="task"><input type="checkbox" id="cb1" data-key="cb1"><label for="cb1"><code>source env.sh &amp;&amp; airflow standalone</code> prints <code>Airflow is ready</code>; you can log in at <code>http://localhost:8080</code> with the password from <code>.airflow/simple_auth_manager_passwords.json.generated</code>.</label></li>
+<li class="task"><input type="checkbox" id="cb2" data-key="cb2"><label for="cb2"><code>docker compose ps</code> shows Postgres as healthy, and <code>docker compose exec weather-db psql -U weather -c 'select 1'</code> returns 1.</label></li>
+<li class="task"><input type="checkbox" id="cb3" data-key="cb3"><label for="cb3"><code>python -c "import weather"</code> works and <code>pytest</code> runs (zero tests is fine).</label></li>
+<li class="task"><input type="checkbox" id="cb4" data-key="cb4"><label for="cb4"><code>.airflow/</code>, <code>data/</code> and <code>.venv/</code> are in <code>.gitignore</code>, and the project is a git repo. Commit at every checkpoint.</label></li>
+</ul>
+</section>
+<section id="sec-module-1-the-mental-model-about-1-hour" data-sec="module-1-the-mental-model-about-1-hour"><h2 id="module-1-the-mental-model-about-1-hour">Module 1: The mental model (about 1 hour)</h2>
+<p>Airflow does not move your data; it decides <strong>when</strong> your Python runs, <strong>in what order</strong>, and <strong>what happens on failure</strong>. Everything else follows from that.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Term</th>
+<th>What it is</th>
+<th>Why it matters for this course</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dag</td>
+<td>A Python-defined graph of tasks plus a schedule</td>
+<td><code>weather_etl</code> is one Dag with four tasks</td>
+</tr>
+<tr>
+<td>Task</td>
+<td>One node in the graph; created by an operator or a <code>@task</code> function</td>
+<td>Each ETL stage is one task</td>
+</tr>
+<tr>
+<td>Dag run</td>
+<td>One execution of the Dag for one data interval</td>
+<td>One run = one day of weather</td>
+</tr>
+<tr>
+<td>Task instance</td>
+<td>One task within one Dag run; has a state and logs</td>
+<td>What you retry and inspect</td>
+</tr>
+<tr>
+<td>Data interval</td>
+<td>The time window a run is responsible for</td>
+<td>Decides which day you fetch, not the wall clock</td>
+</tr>
+<tr>
+<td>XCom</td>
+<td>Small values passed between tasks, stored by Airflow</td>
+<td>Pass file paths, never datasets</td>
+</tr>
+<tr>
+<td>Connection</td>
+<td>Credentials and host for an external system</td>
+<td>How <code>load</code> finds Postgres</td>
+</tr>
+<tr>
+<td>Variable</td>
+<td>A key-value setting stored in Airflow</td>
+<td>Optional config, read inside tasks only</td>
+</tr>
+</tbody>
+</table></div>
+<p>Three rules the rest of the course enforces:</p>
+<ol>
+<li><strong>Dag files are parsed constantly.</strong> The Dag processor re-runs your Dag file&rsquo;s top-level code every few seconds. Never call an API, query a database or read a Variable at the top level (<a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/best-practices.html">Best Practices</a>).</li>
+<li><strong>Tasks must be idempotent.</strong> Running the same task for the same interval twice must give the same result. Use upserts, not inserts, and derive dates from the data interval, never from <code>now()</code>.</li>
+<li><strong>Tasks should not share memory or local state.</strong> Each task may run in a different process or machine. Hand off through durable storage and pass only the location through XCom.</li>
+</ol>
+<p>In Airflow 3, import authoring APIs from <code>airflow.sdk</code> (<code>dag</code>, <code>task</code>, <code>DAG</code>, <code>Variable</code>, <code>Connection</code>). Older tutorials using <code>airflow.decorators</code> or <code>airflow.models</code> are Airflow 2 and will mislead you.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 760 452" role="img" aria-label="Dag files are parsed in one place and run in another" font-size="13">
+<defs><marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-head"/></marker></defs>
+<text x="24" y="34" font-size="15" font-weight="700" class="d-ink">Dag files are parsed in one place and run in another</text>
+<g fill="none" class="d-line" stroke-width="1.25">
+<path d="M232 110H276" marker-end="url(#arch-arrow)"/>
+<path d="M380 146V214" marker-end="url(#arch-arrow)"/>
+<path d="M528 250H484" marker-start="url(#arch-arrow)" marker-end="url(#arch-arrow)"/>
+<path d="M232 250H276" marker-start="url(#arch-arrow)" marker-end="url(#arch-arrow)"/>
+<path d="M632 286V390H484" marker-end="url(#arch-arrow)"/>
+<path d="M276 390H128V286" marker-end="url(#arch-arrow)"/>
+</g>
+<g><rect x="24" y="74" width="208" height="72" rx="8" class="d-box"/>
+<text x="128" y="98" text-anchor="middle" font-weight="700" class="d-ink">Dag files</text>
+<text x="128" y="114" text-anchor="middle" font-size="11.5" class="d-muted">dags/weather_etl.py</text>
+<text x="128" y="130" text-anchor="middle" font-size="11.5" class="d-muted">plain Python modules</text></g>
+<g><rect x="276" y="74" width="208" height="72" rx="8" class="d-box"/>
+<text x="380" y="98" text-anchor="middle" font-weight="700" class="d-ink">Dag processor</text>
+<text x="380" y="114" text-anchor="middle" font-size="11.5" class="d-muted">re-runs top-level code</text>
+<text x="380" y="130" text-anchor="middle" font-size="11.5" class="d-muted">every few seconds</text></g>
+<g><rect x="276" y="214" width="208" height="72" rx="8" class="d-box"/>
+<text x="380" y="238" text-anchor="middle" font-weight="700" class="d-ink">Metadata database</text>
+<text x="380" y="254" text-anchor="middle" font-size="11.5" class="d-muted">Dags, runs, task states,</text>
+<text x="380" y="270" text-anchor="middle" font-size="11.5" class="d-muted">XCom (SQLite locally)</text></g>
+<g><rect x="24" y="214" width="208" height="72" rx="8" class="d-box"/>
+<text x="128" y="238" text-anchor="middle" font-weight="700" class="d-ink">API server</text>
+<text x="128" y="254" text-anchor="middle" font-size="11.5" class="d-muted">the UI and REST API, plus</text>
+<text x="128" y="270" text-anchor="middle" font-size="11.5" class="d-muted">the API tasks report to</text></g>
+<g><rect x="528" y="214" width="208" height="72" rx="8" class="d-box"/>
+<text x="632" y="238" text-anchor="middle" font-weight="700" class="d-ink">Scheduler</text>
+<text x="632" y="254" text-anchor="middle" font-size="11.5" class="d-muted">creates Dag runs, picks</text>
+<text x="632" y="270" text-anchor="middle" font-size="11.5" class="d-muted">tasks that are ready</text></g>
+<g><rect x="276" y="354" width="208" height="72" rx="8" class="d-box d-accent"/>
+<text x="380" y="378" text-anchor="middle" font-weight="700" class="d-ink">Executor and worker</text>
+<text x="380" y="394" text-anchor="middle" font-size="11.5" class="d-ink">runs your task code,</text>
+<text x="380" y="410" text-anchor="middle" font-size="11.5" class="d-ink">calls Open-Meteo, Postgres</text></g>
+<text x="254" y="102" text-anchor="middle" font-size="11.5" class="d-muted">reads</text>
+<text x="388" y="184" font-size="11.5" class="d-muted">stores serialized Dags</text>
+<text x="624" y="330" text-anchor="end" font-size="11.5" class="d-muted">queues ready tasks</text>
+<text x="136" y="330" font-size="11.5" class="d-muted">reports state and XCom</text>
+</svg>
+<figcaption>Airflow 3 components: how a Dag file becomes a running task</figcaption>
+</figure>
+
+<p>With <code>airflow standalone</code> all of these run from one terminal; in production each is a separate process or container. Your task code runs only on the worker, while the Dag processor re-runs your file&rsquo;s top level constantly, which is why that top level must stay cheap.</p>
+<h3 id="exercise-11-explain-it-back">Exercise 1.1: explain it back</h3>
+<p>Create <code>NOTES.md</code> and answer in your own words, two or three sentences each. Use the <a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/core-concepts/index.html">Core Concepts</a> docs.</p>
+<ul>
+<li>A Dag is scheduled daily with <code>start_date</code> of 1 November. On which date does the run for 1 November actually start, and why?</li>
+<li>What is the difference between the logical date and the time a run started?</li>
+<li>Why is passing a 50 MB list through XCom a bad idea?</li>
+<li>What does <code>catchup</code> do, and what is its default in Airflow 3?</li>
+<li>What happens to downstream tasks when an upstream task fails?</li>
+</ul>
+<h3 id="checkpoint-1">Checkpoint 1</h3>
+<ul>
+<li class="task"><input type="checkbox" id="cb5" data-key="cb5"><label for="cb5">You can answer all five questions without looking at the docs.</label></li>
+<li class="task"><input type="checkbox" id="cb6" data-key="cb6"><label for="cb6">You can name the component that parses Dag files and the one that decides what runs next (see the diagram above).</label></li>
+</ul>
+</section>
+<section id="sec-module-2-your-first-dag-with-taskflow-about-15-hours" data-sec="module-2-your-first-dag-with-taskflow-about-15-hours"><h2 id="module-2-your-first-dag-with-taskflow-about-15-hours">Module 2: Your first Dag with TaskFlow (about 1.5 hours)</h2>
+<p>The TaskFlow API turns plain functions into tasks: decorate them with <code>@task</code>, call them inside a <code>@dag</code> function, and Airflow infers the dependencies and the XCom hand-offs from the return values (<a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/tutorial/taskflow.html">TaskFlow tutorial</a>). This is the only shape you need to see in full:</p>
+<pre tabindex="0"><code class="language-python">import pendulum
+from airflow.sdk import dag, task
+
+
+@dag(
+    schedule=None,                     # manual runs only, for now
+    start_date=pendulum.datetime(2026, 11, 1, tz=&quot;UTC&quot;),
+    catchup=False,
+    tags=[&quot;course&quot;],
+)
+def hello_taskflow():
+    @task
+    def make_numbers() -&gt; list[int]:
+        ...
+
+    # more tasks here
+
+    numbers = make_numbers()           # returns a reference, not the list
+    # chain calls: report(square_all(numbers))
+
+
+hello_taskflow()                       # registers the Dag; easy to forget
+</code></pre>
+<h3 id="exercise-21-build-hello_taskflow">Exercise 2.1: build <code>hello_taskflow</code></h3>
+<p>In <code>dags/hello_taskflow.py</code>, write three tasks:</p>
+<ul>
+<li><code>make_numbers</code> returns <code>[1, 2, ..., 10]</code>.</li>
+<li><code>square_all(numbers)</code> returns the squares.</li>
+<li><code>report(squares)</code> logs the sum and the run&rsquo;s <code>data_interval_start</code>. Get the latter by adding a keyword parameter named <code>data_interval_start=None</code>; Airflow injects context values that match parameter names.</li>
+</ul>
+<p>Use the standard <code>logging</code> module, not <code>print</code>, so output lands cleanly in task logs.</p>
+<h3 id="exercise-22-run-it-three-ways">Exercise 2.2: run it three ways</h3>
+<ol>
+<li><code>python dags/hello_taskflow.py</code> — the loader test. No output and no error means it parses.</li>
+<li><code>airflow dags test hello_taskflow 2026-11-01</code> — runs the whole Dag in one process, no scheduler needed. Your fastest feedback loop.</li>
+<li>In the UI, unpause and trigger it. Open each task&rsquo;s logs and its XCom tab.</li>
+</ol>
+<h3 id="exercise-23-break-it-on-purpose">Exercise 2.3: break it on purpose</h3>
+<ul>
+<li>Make <code>square_all</code> raise on its first attempt only. Hint: the context value <code>ti</code> has a <code>try_number</code>. Set <code>retries=2</code> and <code>retry_delay=pendulum.duration(seconds=10)</code> on the task and watch it recover in the UI.</li>
+<li>Put <code>logging.warning("parsed!")</code> at the top level of the file. Watch the scheduler output in the standalone terminal and count how often it appears. Then remove it; this is rule 1 from Module 1.</li>
+<li>Return a <code>set</code> from <code>make_numbers</code>. Read the error. XCom values must be serializable; learn what that means here rather than in Module 3.</li>
+</ul>
+<h3 id="checkpoint-2">Checkpoint 2</h3>
+<ul>
+<li class="task"><input type="checkbox" id="cb7" data-key="cb7"><label for="cb7"><code>airflow dags test</code> succeeds and <code>report</code> logs 385.</label></li>
+<li class="task"><input type="checkbox" id="cb8" data-key="cb8"><label for="cb8">You saw a retry succeed in the UI.</label></li>
+<li class="task"><input type="checkbox" id="cb9" data-key="cb9"><label for="cb9">You can explain why calling <code>make_numbers()</code> inside the Dag function does not run it.</label></li>
+</ul>
+</section>
+<section id="sec-module-3-extract-about-25-hours" data-sec="module-3-extract-about-25-hours"><h2 id="module-3-extract-about-25-hours">Module 3: Extract (about 2.5 hours)</h2>
+<p>The extract task fetches one day of hourly weather per city and writes each response to disk byte for byte, before any parsing. Keeping the raw file means a parsing bug never forces you to call the API again, and you can always prove what the source sent.</p>
+<p><strong>API:</strong> the Open-Meteo <a href="https://open-meteo.com/en/docs/historical-weather-api">Historical Weather API</a>, <code>https://archive-api.open-meteo.com/v1/archive</code>. No key; free for non-commercial use, so keep backfills modest. Read its docs page once before coding.</p>
+<h3 id="exercise-31-grab-a-real-fixture-first">Exercise 3.1: grab a real fixture first</h3>
+<p>Before writing code, call the API by hand and save the result as a test fixture:</p>
+<pre tabindex="0"><code class="language-bash">curl &quot;https://archive-api.open-meteo.com/v1/archive?latitude=59.91&amp;longitude=10.75&amp;start_date=2026-10-01&amp;end_date=2026-10-01&amp;hourly=temperature_2m,precipitation,wind_speed_10m,relative_humidity_2m&amp;timezone=UTC&quot; \
+  &gt; tests/fixtures/oslo_2026-10-01.json
+</code></pre>
+<p>Open it. Note that <code>hourly</code> holds <strong>parallel arrays</strong>: one <code>time</code> list and one list per variable, aligned by index. Turning that into rows is the parse step&rsquo;s job. Then call it again with a bad variable name and save that response too as <code>tests/fixtures/error_bad_variable.json</code>; it shows you the API&rsquo;s error format.</p>
+<h3 id="exercise-32-configpy-and-modelspy">Exercise 3.2: <code>config.py</code> and <code>models.py</code></h3>
+<ul>
+<li>In <code>models.py</code>, a frozen dataclass <code>City</code> with <code>slug: str</code>, <code>name: str</code>, <code>latitude: float</code>, <code>longitude: float</code>. Use <code>@dataclass(frozen=True, slots=True)</code> and find out what each option does.</li>
+<li>In <code>config.py</code>: <code>CITIES</code>, a tuple of three <code>City</code> values (for example Oslo, Berlin, Madrid); <code>ARCHIVE_URL</code>; <code>HOURLY_VARIABLES</code> as a tuple of the four variable names above; and a function <code>data_dir() -&gt; Path</code> that reads <code>WEATHER_DATA_DIR</code> and raises a clear error if it is unset.</li>
+</ul>
+<h3 id="exercise-33-extractpy">Exercise 3.3: <code>extract.py</code></h3>
+<p>Implement these, keeping the module free of Airflow imports:</p>
+<pre tabindex="0"><code class="language-python">class PermanentAPIError(Exception): ...        # 4xx: retrying will not help
+
+class HttpGetter(Protocol):                     # anything with a requests-like .get()
+    def get(self, url: str, *, params: Mapping[str, Any], timeout: float) -&gt; Response: ...
+
+def build_params(city: City, day: date) -&gt; dict[str, str | float]: ...
+def raw_path(base: Path, city: City, day: date) -&gt; Path: ...
+def fetch_day(city: City, day: date, http: HttpGetter, timeout: float = 30.0) -&gt; str: ...
+def write_atomic(text: str, path: Path) -&gt; Path: ...
+def extract_day(day: date, cities: Sequence[City], base: Path, http: HttpGetter) -&gt; list[Path]: ...
+</code></pre>
+<p>Acceptance criteria:</p>
+<ul>
+<li><code>build_params</code> requests one day (<code>start_date == end_date</code>), all <code>HOURLY_VARIABLES</code> comma-joined, and <code>timezone=UTC</code>.</li>
+<li><code>raw_path</code> returns a partitioned path: <code>base/raw/open_meteo/date=2026-10-01/oslo.json</code>. Partitioning by date is what makes reruns overwrite instead of duplicate.</li>
+<li><code>fetch_day</code> returns <code>response.text</code> untouched. On a 4xx it raises <code>PermanentAPIError</code> whose message includes the API&rsquo;s <code>reason</code> field. On a 5xx or timeout it lets a <code>requests</code> exception propagate, so Airflow&rsquo;s retries handle it.</li>
+<li><code>write_atomic</code> writes to a temporary file in the same directory, then renames it into place with <code>Path.replace</code>. A crash mid-write must never leave a half-written file at the final path.</li>
+<li><code>extract_day</code> creates directories as needed and returns the written paths.</li>
+</ul>
+<p>Why a <code>Protocol</code> and an injected <code>http</code> argument? Your tests can pass a tiny fake object instead of patching <code>requests</code>. This is dependency injection, and it is the single most useful testing habit to build.</p>
+<h3 id="exercise-34-tests-in-teststest_extractpy">Exercise 3.4: tests in <code>tests/test_extract.py</code></h3>
+<p>Write a <code>FakeHttp</code> class in <code>tests/conftest.py</code> that records each call and returns canned responses. Then write at least these tests:</p>
+<ul>
+<li><code>build_params</code> produces the expected dict for one city and day.</li>
+<li><code>raw_path</code> produces the partitioned path (use pytest&rsquo;s <code>tmp_path</code> fixture as <code>base</code>).</li>
+<li><code>fetch_day</code> returns the fixture text unchanged on 200.</li>
+<li><code>fetch_day</code> raises <code>PermanentAPIError</code> mentioning the reason on 400, using your error fixture.</li>
+<li><code>fetch_day</code> raises <code>requests.HTTPError</code> on 503.</li>
+<li>Running <code>extract_day</code> twice for the same day leaves exactly one file per city.</li>
+<li><code>write_atomic</code> leaves no file at the target if writing fails. Hint: <code>monkeypatch</code> a method so it raises.</li>
+</ul>
+<p>Use <code>@pytest.mark.parametrize</code> for the status-code cases instead of copy-pasting tests.</p>
+<h3 id="exercise-35-the-extract-task">Exercise 3.5: the <code>extract</code> task</h3>
+<p>Create <code>dags/weather_etl.py</code> with <code>schedule=None</code> for now and a single <code>extract</code> task. It takes <code>data_interval_start</code>, derives the day, calls <code>extract_day</code> with a real <code>requests.Session()</code>, and returns the paths as a list of strings. Import <code>weather.extract</code> <strong>inside</strong> the task function, not at the top of the file, to keep parsing fast.</p>
+<p>A 4xx should fail the task immediately without retries. Find the Airflow exception that does that, <code>AirflowFailException</code>, and its Airflow 3 import path in the docs; catch <code>PermanentAPIError</code> in the task and re-raise it as that.</p>
+<p>One real-world wrinkle: the archive lags real time by several days, so the most recent days may come back with <code>null</code> values. Do not handle it here. The parse step will.</p>
+<h3 id="checkpoint-3">Checkpoint 3</h3>
+<ul>
+<li class="task"><input type="checkbox" id="cb10" data-key="cb10"><label for="cb10">All extract tests pass and <code>ruff check</code> and <code>mypy src</code> are clean.</label></li>
+<li class="task"><input type="checkbox" id="cb11" data-key="cb11"><label for="cb11"><code>airflow dags test weather_etl 2026-10-01</code> writes three raw files under <code>data/raw/open_meteo/date=2026-10-01/</code>.</label></li>
+<li class="task"><input type="checkbox" id="cb12" data-key="cb12"><label for="cb12">Running it again overwrites them; the file count stays at three.</label></li>
+</ul>
+</section>
+<section id="sec-module-4-parse-about-25-hours" data-sec="module-4-parse-about-25-hours"><h2 id="module-4-parse-about-25-hours">Module 4: Parse (about 2.5 hours)</h2>
+<p>The parse task turns an untrusted raw response into typed, validated records, and fails loudly when the source changes shape. In production most pipeline incidents start here: a renamed field, a changed unit, a missing hour. Your parser&rsquo;s job is to notice before bad data reaches the database.</p>
+<h3 id="exercise-41-the-record-type">Exercise 4.1: the record type</h3>
+<p>In <code>models.py</code>, add a frozen dataclass <code>HourlyObservation</code>:</p>
+<pre tabindex="0"><code class="language-python">city: str
+observed_at: datetime          # timezone-aware, UTC
+temperature_c: float | None
+precipitation_mm: float | None
+wind_speed_kmh: float | None
+relative_humidity_pct: float | None
+</code></pre>
+<p>Give it two methods: <code>to_json() -&gt; str</code> and a <code>@classmethod</code> <code>from_json(line: str) -&gt; HourlyObservation</code>. <code>datetime</code> is not JSON-serializable, so you must decide how to encode it (ISO 8601 strings) and decode it.</p>
+<h3 id="exercise-42-parsepy">Exercise 4.2: <code>parse.py</code></h3>
+<pre tabindex="0"><code class="language-python">class ParseError(ValueError): ...           # the source is malformed: fail, do not retry
+class SourceNotReady(Exception): ...        # the day exists but has no data yet: retry later
+
+EXPECTED_UNITS: dict[str, str] = {...}      # fill in from your fixture's hourly_units
+
+def parse_payload(payload: Mapping[str, Any], city: str, day: date) -&gt; list[HourlyObservation]: ...
+def parse_file(path: Path, city: str, day: date) -&gt; list[HourlyObservation]: ...
+def staged_path(base: Path, city: str, day: date) -&gt; Path: ...  # base/staged/hourly/date=.../oslo.jsonl
+def write_jsonl(records: Iterable[HourlyObservation], path: Path) -&gt; Path: ...
+def read_jsonl(path: Path) -&gt; list[HourlyObservation]: ...
+</code></pre>
+<p><code>parse_payload</code> must enforce every rule below, each with an error message that names the field and the problem:</p>
+<ol>
+<li><code>hourly</code> and <code>hourly_units</code> exist and are dicts.</li>
+<li>Every variable in <code>HOURLY_VARIABLES</code> is present in both.</li>
+<li>Every unit matches <code>EXPECTED_UNITS</code>. A silent switch from °C to °F is exactly the drift you want to catch.</li>
+<li>Every array has the same length as <code>time</code>.</li>
+<li>Timestamps parse, are unique, all fall on <code>day</code>, and there are exactly 24.</li>
+<li>Every value is an <code>int</code>, a <code>float</code> or <code>None</code>. Watch out: <code>isinstance(True, int)</code> is <code>True</code> in Python, so booleans need an explicit check.</li>
+<li>If every value of every variable is <code>None</code>, raise <code>SourceNotReady</code>. Some <code>None</code> values are allowed and stay <code>None</code>.</li>
+</ol>
+<p>The core transformation is zipping parallel arrays into rows. Try writing it first with <code>zip(..., strict=True)</code> and think about why <code>strict=True</code> matters here.</p>
+<p>Map the API&rsquo;s variable names to your field names in one dict, not in scattered <code>if</code> statements.</p>
+<h3 id="exercise-43-tests-in-teststest_parsepy">Exercise 4.3: tests in <code>tests/test_parse.py</code></h3>
+<p>Add a fixture in <code>conftest.py</code> that loads the Oslo JSON <strong>fresh for every test</strong>, so a test can mutate it without affecting others. Then write tests for:</p>
+<ul>
+<li>The happy path: 24 records, the first record matches index 0 of each fixture array, and <code>observed_at</code> is UTC-aware.</li>
+<li>One test per rule 1 to 6, each mutating the fixture to break exactly one rule and asserting <code>ParseError</code> with <code>pytest.raises(ParseError, match=...)</code>.</li>
+<li>A few <code>None</code> values survive as <code>None</code>; all <code>None</code> raises <code>SourceNotReady</code>.</li>
+<li><code>to_json</code> then <code>from_json</code> returns an equal object. Then the same round trip through <code>write_jsonl</code> and <code>read_jsonl</code>.</li>
+</ul>
+<p>If writing a test is awkward, your function is probably doing too much. Split it and test the pieces.</p>
+<h3 id="exercise-44-the-parse-task">Exercise 4.4: the <code>parse</code> task</h3>
+<p>Add a <code>parse</code> task that receives the extract task&rsquo;s list of raw paths, works out each city from the file name, parses it, writes the staged JSONL file, and returns the staged paths. Wire it as <code>parse(extract())</code>.</p>
+<p>Map your exceptions to Airflow behaviour in the task, not in <code>parse.py</code>: <code>ParseError</code> fails immediately without retries, and <code>SourceNotReady</code> is allowed to propagate so the task&rsquo;s normal retries apply. Module 8 tunes those retries.</p>
+<h3 id="checkpoint-4">Checkpoint 4</h3>
+<ul>
+<li class="task"><input type="checkbox" id="cb13" data-key="cb13"><label for="cb13">At least 12 parse tests pass, and coverage of <code>parse.py</code> is above 90% (<code>pytest --cov=weather</code>; add <code>pytest-cov</code> to your dev dependencies).</label></li>
+<li class="task"><input type="checkbox" id="cb14" data-key="cb14"><label for="cb14"><code>airflow dags test weather_etl 2026-10-01</code> produces three staged <code>.jsonl</code> files with 24 lines each.</label></li>
+<li class="task"><input type="checkbox" id="cb15" data-key="cb15"><label for="cb15">Edit one raw file by hand to break a unit, rerun only <code>parse</code> with <code>airflow tasks test weather_etl parse 2026-10-01</code>, and read the failure in the log. Then restore the file.</label></li>
+</ul>
+</section>
+<section id="sec-module-5-transform-about-15-hours" data-sec="module-5-transform-about-15-hours"><h2 id="module-5-transform-about-15-hours">Module 5: Transform (about 1.5 hours)</h2>
+<p>The transform task aggregates 24 hourly records per city into one <code>DailySummary</code> row per city, using pure functions with no I/O in the core logic. Pure functions are the easiest code in the whole pipeline to test, so this module is where you practise writing precise tests.</p>
+<h3 id="exercise-51-the-summary-type">Exercise 5.1: the summary type</h3>
+<p>Add a frozen dataclass <code>DailySummary</code> to <code>models.py</code>:</p>
+<pre tabindex="0"><code class="language-python">city: str
+day: date
+temp_min_c: float | None
+temp_max_c: float | None
+temp_mean_c: float | None
+precipitation_total_mm: float | None
+wind_max_kmh: float | None
+humidity_mean_pct: float | None
+hours_observed: int        # hours with a non-null temperature
+is_complete: bool          # all 24 hours present for every variable
+</code></pre>
+<p>Add <code>to_json</code> and <code>from_json</code> as before. Notice the duplication with <code>HourlyObservation</code>; Module 9 offers a refactor.</p>
+<h3 id="exercise-52-transformpy">Exercise 5.2: <code>transform.py</code></h3>
+<pre tabindex="0"><code class="language-python">def summarize(records: Sequence[HourlyObservation]) -&gt; DailySummary: ...
+def summarize_all(records: Iterable[HourlyObservation]) -&gt; list[DailySummary]: ...
+def curated_path(base: Path, day: date) -&gt; Path: ...   # base/curated/daily/date=.../summary.jsonl
+</code></pre>
+<p>Rules:</p>
+<ul>
+<li><code>summarize</code> raises <code>ValueError</code> on an empty input or on records from more than one city or day.</li>
+<li><code>None</code> values are ignored in every aggregate. If a variable has no values at all, its aggregate is <code>None</code>, not 0.</li>
+<li>Round floats to 2 decimals at the end, not in intermediate steps.</li>
+<li><code>summarize_all</code> groups by city and returns summaries sorted by city slug.</li>
+</ul>
+<p>Write the grouping twice: once with <code>collections.defaultdict(list)</code> and once with <code>itertools.groupby</code>. The second one has a trap: it only groups <strong>adjacent</strong> items. Find it with a test, then keep whichever version you find clearer. <code>statistics.fmean</code> is handy for means.</p>
+<h3 id="exercise-53-tests-in-teststest_transformpy">Exercise 5.3: tests in <code>tests/test_transform.py</code></h3>
+<p>Build small inputs by hand rather than using the API fixture, so every expected number is obvious. A helper <code>make_obs(hour, temp=..., precip=...)</code> with defaults keeps tests short.</p>
+<ul>
+<li>Temperatures <code>1.0, 2.0, None</code> give min 1.0, max 2.0, mean 1.5 and <code>hours_observed == 2</code>. Compare floats with <code>pytest.approx</code>.</li>
+<li>Precipitation all <code>None</code> gives <code>None</code>, not 0.0.</li>
+<li>24 complete hours give <code>is_complete is True</code>; 23 give <code>False</code>.</li>
+<li>Mixed cities raise <code>ValueError</code>; so does an empty list.</li>
+<li><code>summarize_all</code> on interleaved cities (Oslo, Berlin, Oslo, &hellip;) returns one correct summary per city. This is the test that catches the <code>groupby</code> trap.</li>
+<li>Run <code>summarize</code> on the parsed Oslo fixture and check <code>temp_min_c &lt;= temp_mean_c &lt;= temp_max_c</code>.</li>
+</ul>
+<p>Optional: install <code>hypothesis</code> and write one property-based test asserting that min ≤ mean ≤ max for any list of non-null temperatures.</p>
+<h3 id="exercise-54-the-transform-task">Exercise 5.4: the <code>transform</code> task</h3>
+<p>The <code>transform</code> task reads all staged JSONL files for the run&rsquo;s day, calls <code>summarize_all</code>, writes one curated JSONL file, and returns its path. Wire it as <code>transform(parse(extract()))</code>.</p>
+<h3 id="checkpoint-5">Checkpoint 5</h3>
+<ul>
+<li class="task"><input type="checkbox" id="cb16" data-key="cb16"><label for="cb16">Transform tests pass, including the interleaved-cities test.</label></li>
+<li class="task"><input type="checkbox" id="cb17" data-key="cb17"><label for="cb17"><code>airflow dags test weather_etl 2026-10-01</code> produces <code>data/curated/daily/date=2026-10-01/summary.jsonl</code> with three lines.</label></li>
+<li class="task"><input type="checkbox" id="cb18" data-key="cb18"><label for="cb18">In the Graph view, you see three tasks in a line, and the XCom of each task is a short path, not data.</label></li>
+</ul>
+</section>
+<section id="sec-module-6-load-about-2-hours" data-sec="module-6-load-about-2-hours"><h2 id="module-6-load-about-2-hours">Module 6: Load (about 2 hours)</h2>
+<p>The load task upserts the daily summaries into Postgres through an Airflow Connection, so rerunning any day replaces its rows instead of duplicating them. You also meet your first classic operator, mixed with TaskFlow tasks in the same Dag.</p>
+<h3 id="exercise-61-the-table">Exercise 6.1: the table</h3>
+<p>Write <code>sql/create_tables.sql</code> yourself. Requirements: a table <code>daily_weather</code> with one column per <code>DailySummary</code> field, <code>numeric(6,2)</code> for measurements, a <code>loaded_at timestamptz</code> defaulting to <code>now()</code>, and a <strong>primary key on <code>(city, day)</code></strong>. Use <code>CREATE TABLE IF NOT EXISTS</code> so the statement is idempotent.</p>
+<p>Run it from the Dag with <code>SQLExecuteQueryOperator</code> from <code>airflow.providers.common.sql.operators.sql</code>, passing <code>conn_id="weather_db"</code> and <code>sql="create_tables.sql"</code>. For Airflow to find that file, set <code>template_searchpath</code> on the <code>@dag</code> decorator to the absolute path of your <code>sql/</code> folder. Look up why that parameter is needed: <code>sql</code> is a templated field.</p>
+<h3 id="exercise-62-loadpy">Exercise 6.2: <code>load.py</code></h3>
+<p>Keep it free of Airflow imports. It works with any DB-API connection, which is what <code>PostgresHook.get_conn()</code> returns.</p>
+<pre tabindex="0"><code class="language-python">COLUMNS: tuple[str, ...] = (...)            # same order everywhere
+
+def summary_to_row(s: DailySummary) -&gt; tuple[Any, ...]: ...
+def build_upsert_sql(table: str = &quot;daily_weather&quot;) -&gt; str: ...
+def upsert_summaries(conn: DbApiConnection, summaries: Sequence[DailySummary]) -&gt; int: ...
+</code></pre>
+<p>Rules:</p>
+<ul>
+<li><code>build_upsert_sql</code> produces <code>INSERT ... ON CONFLICT (city, day) DO UPDATE SET col = EXCLUDED.col, ...</code> for every non-key column, plus <code>loaded_at = now()</code>. Generate the column lists from <code>COLUMNS</code> rather than typing them twice.</li>
+<li>Values go in as <strong>query parameters</strong> (<code>%s</code> placeholders), never formatted into the string. Only the table name, which you control, is interpolated.</li>
+<li><code>upsert_summaries</code> runs all rows in one transaction with <code>cursor.executemany</code>: commit at the end, roll back and re-raise on any error. It returns the number of rows sent.</li>
+<li>Define <code>DbApiConnection</code> as a small <code>Protocol</code> with <code>cursor()</code>, <code>commit()</code> and <code>rollback()</code>.</li>
+</ul>
+<h3 id="exercise-63-tests">Exercise 6.3: tests</h3>
+<p>Unit tests in <code>tests/test_load.py</code>, no database needed:</p>
+<ul>
+<li><code>summary_to_row</code> returns values in <code>COLUMNS</code> order.</li>
+<li><code>build_upsert_sql</code> contains one <code>%s</code> per column, the <code>ON CONFLICT (city, day)</code> clause, and does not update <code>city</code> or <code>day</code>.</li>
+<li>With a fake connection, <code>upsert_summaries</code> commits once on success, and rolls back and re-raises when the fake cursor raises.</li>
+</ul>
+<p>Integration tests in <code>tests/test_load_integration.py</code> against the Docker Postgres:</p>
+<ul>
+<li>Mark them with <code>@pytest.mark.integration</code> and register the marker in <code>pyproject.toml</code>. Skip them unless an environment variable such as <code>WEATHER_TEST_DSN</code> is set; <code>pytest.mark.skipif</code> does this.</li>
+<li>Find out which Postgres driver the provider installed (<code>uv pip list | grep -i psycopg</code>) and connect with it directly in a fixture that creates the table and truncates it after each test.</li>
+<li>Upserting the same three summaries twice leaves exactly three rows; upserting a changed value updates it.</li>
+<li>A batch with one invalid row (for example a 300-character city) leaves the table unchanged.</li>
+</ul>
+<p>Run them with <code>pytest -m integration</code>.</p>
+<h3 id="exercise-64-the-load-task">Exercise 6.4: the <code>load</code> task</h3>
+<p>The <code>load</code> task reads the curated file, opens a connection with <code>PostgresHook(postgres_conn_id="weather_db")</code>, calls <code>upsert_summaries</code>, and returns the row count. Import the hook inside the task. Wire the full chain so <code>create_tables</code> runs before <code>extract</code>: <code>create_tables &gt;&gt; extracted</code>, where <code>extracted = extract()</code>.</p>
+<h3 id="exercise-65-a-verification-task">Exercise 6.5: a verification task</h3>
+<p>Add a final <code>verify</code> task that queries <code>daily_weather</code> for the run&rsquo;s day using <code>hook.get_first(...)</code> and fails if the row count differs from <code>len(CITIES)</code>. A pipeline that checks its own output is worth more than one that only reports success.</p>
+<h3 id="checkpoint-6">Checkpoint 6</h3>
+<ul>
+<li class="task"><input type="checkbox" id="cb19" data-key="cb19"><label for="cb19">Unit and integration tests pass.</label></li>
+<li class="task"><input type="checkbox" id="cb20" data-key="cb20"><label for="cb20"><code>airflow dags test weather_etl 2026-10-01</code> runs five tasks green, and <code>select * from daily_weather</code> shows three rows.</label></li>
+<li class="task"><input type="checkbox" id="cb21" data-key="cb21"><label for="cb21">Running the same day again keeps three rows, with a newer <code>loaded_at</code>.</label></li>
+</ul>
+</section>
+<section id="sec-module-7-testing-the-dag-about-2-hours" data-sec="module-7-testing-the-dag-about-2-hours"><h2 id="module-7-testing-the-dag-about-2-hours">Module 7: Testing the Dag (about 2 hours)</h2>
+<p>Your logic is already tested; this module tests the Dag as a whole and organizes the suite so it runs in seconds. Aim for many fast unit tests, a few integration tests, and one end-to-end run.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What it proves</th>
+<th>Needs</th>
+<th>Run with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unit</td>
+<td>Each function behaves (Modules 3 to 6)</td>
+<td>Nothing</td>
+<td><code>pytest</code></td>
+</tr>
+<tr>
+<td>Dag integrity</td>
+<td>The Dag file imports and follows your rules</td>
+<td>Airflow installed</td>
+<td><code>pytest</code></td>
+</tr>
+<tr>
+<td>Dag structure</td>
+<td>Tasks and dependencies are what you intended</td>
+<td>Airflow installed</td>
+<td><code>pytest</code></td>
+</tr>
+<tr>
+<td>Integration</td>
+<td>SQL works against real Postgres</td>
+<td>Docker Postgres</td>
+<td><code>pytest -m integration</code></td>
+</tr>
+<tr>
+<td>End-to-end</td>
+<td>A full run produces correct rows</td>
+<td>Postgres, network, metadata DB</td>
+<td><code>pytest -m e2e</code> or <code>airflow dags test</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="exercise-71-dag-integrity-tests">Exercise 7.1: Dag integrity tests</h3>
+<p>In <code>tests/test_dag_integrity.py</code>, load your Dags with <code>DagBag</code> from <code>airflow.dag_processing.dagbag</code> (<a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/best-practices.html#testing-a-dag">Testing a Dag</a>), passing your <code>dags/</code> folder and <code>include_examples=False</code>. Use a module-scoped fixture so it loads once. Assert:</p>
+<ul>
+<li><code>dagbag.import_errors == {}</code>. Print the errors in the assertion message so failures are readable.</li>
+<li><code>weather_etl</code> exists.</li>
+<li>Every Dag has at least one tag, <code>catchup</code> set explicitly, and <code>retries &gt;= 1</code> in its default args.</li>
+</ul>
+<p>These tests need <code>AIRFLOW_HOME</code> and friends. Set them for the test session in <code>conftest.py</code> using <code>monkeypatch</code>-style environment setup or the <code>pytest-env</code> plugin, pointing at a throwaway directory so tests never touch your real <code>.airflow</code>.</p>
+<h3 id="exercise-72-structure-test">Exercise 7.2: structure test</h3>
+<p>Assert the exact graph with a dict of task id to downstream task ids, for example <code>{"create_tables": {"extract"}, "extract": {"parse"}, ...}</code>, comparing against <code>dag.get_task(task_id).downstream_task_ids</code>. This catches a dependency deleted by accident during a refactor.</p>
+<h3 id="exercise-73-prove-there-are-no-side-effects-at-parse-time">Exercise 7.3: prove there are no side effects at parse time</h3>
+<p>Write a test that monkeypatches <code>requests.Session.request</code> to raise, then imports the Dag file through <code>DagBag</code>. If it imports cleanly, the Dag file makes no network calls at parse time. This turns rule 1 from Module 1 into an executable check.</p>
+<h3 id="exercise-74-test-the-tasks-airflow-glue">Exercise 7.4: test the tasks&rsquo; Airflow glue</h3>
+<p>Your task functions contain a little glue: exception mapping, date derivation, path handling. Test it by calling the underlying Python function directly. Each <code>@task</code> object exposes the original function; find the attribute name in the TaskFlow docs or with <code>dir()</code>. Mock the hook by setting <code>AIRFLOW_CONN_WEATHER_DB</code> with <code>unittest.mock.patch.dict("os.environ", ...)</code>, as the Best Practices page shows.</p>
+<h3 id="exercise-75-end-to-end-and-a-mutation-drill">Exercise 7.5: end-to-end, and a mutation drill</h3>
+<ul>
+<li>Add one <code>@pytest.mark.e2e</code> test that calls <code>weather_etl.test(logical_date=...)</code> for a fixed past day and then queries Postgres for three rows. Skip it unless an environment variable is set.</li>
+<li><strong>Mutation drill:</strong> introduce five small bugs by hand, one at a time (flip <code>&lt;</code> to <code>&lt;=</code>, drop <code>strict=True</code>, remove the rollback, swap two columns in <code>COLUMNS</code>, use <code>now()</code> for the date). Run the suite after each. Any bug that survives means a missing test; write it.</li>
+</ul>
+<h3 id="exercise-76-one-command-to-check-everything">Exercise 7.6: one command to check everything</h3>
+<p>Write <code>scripts/check.sh</code> that runs <code>ruff check</code>, <code>ruff format --check</code>, <code>mypy src</code>, and <code>pytest -m "not integration and not e2e"</code>, and exits non-zero on the first failure (<code>set -euo pipefail</code>). Run it before every commit.</p>
+<h3 id="checkpoint-7">Checkpoint 7</h3>
+<ul>
+<li class="task"><input type="checkbox" id="cb22" data-key="cb22"><label for="cb22"><code>scripts/check.sh</code> passes in under 30 seconds.</label></li>
+<li class="task"><input type="checkbox" id="cb23" data-key="cb23"><label for="cb23">Every one of the five mutations is caught by at least one test.</label></li>
+<li class="task"><input type="checkbox" id="cb24" data-key="cb24"><label for="cb24">Integration and e2e suites pass when their environment variables are set.</label></li>
+</ul>
+</section>
+<section id="sec-module-8-scheduling-backfills-and-retries-about-25-hours" data-sec="module-8-scheduling-backfills-and-retries-about-25-hours"><h2 id="module-8-scheduling-backfills-and-retries-about-25-hours">Module 8: Scheduling, backfills and retries (about 2.5 hours)</h2>
+<p>Your Dag now runs itself every day, loads history with a backfill, waits for late data instead of failing, and triggers a second Dag when new data lands. This is where the idempotency work from earlier modules pays off.</p>
+<h3 id="exercise-81-put-it-on-a-schedule">Exercise 8.1: put it on a schedule</h3>
+<p>Change <code>weather_etl</code> to <code>schedule="@daily"</code>, a fixed <code>start_date</code> in the past (for example 1 September 2026, UTC), <code>catchup=False</code> and <code>max_active_runs=3</code> to stay gentle on a free API. Move retry settings into <code>default_args</code>: <code>retries=3</code>, <code>retry_delay</code> of 5 minutes, and <code>retry_exponential_backoff=True</code>. Unpause it and check in the UI which data interval the next run covers.</p>
+<h3 id="exercise-82-backfill-a-month">Exercise 8.2: backfill a month</h3>
+<pre tabindex="0"><code class="language-bash">airflow backfill create --dag-id weather_etl --from-date 2026-09-01 --to-date 2026-09-30
+</code></pre>
+<p>Watch runs proceed three at a time. Then answer in <code>NOTES.md</code>: how many rows does <code>daily_weather</code> have now, and what would happen if you ran the same backfill again? Run it again to check. If the count changed, an earlier module has an idempotency bug; find it.</p>
+<h3 id="exercise-83-find-the-retry-bug">Exercise 8.3: find the retry bug</h3>
+<p>Trigger a run for a very recent day, where the archive still returns <code>null</code>. Parse raises <code>SourceNotReady</code> and Airflow retries it. Explain in <code>NOTES.md</code> why <strong>retrying parse can never succeed</strong> in this design. (Hint: what does parse read, and when was it written?)</p>
+<p>The fix is a <strong>sensor</strong>: a task that waits until a condition is true. Add a <code>wait_for_data</code> task before <code>extract</code> using the <code>@task.sensor</code> decorator with <code>mode="reschedule"</code>, a <code>poke_interval</code> of one hour and a <code>timeout</code> of seven days. It calls a small <code>is_day_available(city, day, http) -&gt; bool</code> function you add to <code>extract.py</code> and test like the others. In reschedule mode the sensor frees its worker slot between checks instead of sleeping in it; read the <a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/core-concepts/sensors.html">Sensors</a> page to see why that matters at scale.</p>
+<p>After this change, <code>SourceNotReady</code> reaching parse signals a real anomaly, so map it to an immediate failure too.</p>
+<h3 id="exercise-84-break-and-recover">Exercise 8.4: break and recover</h3>
+<p>Practise the operations you will do in real incidents, each in the UI:</p>
+<ul>
+<li>Stop Postgres (<code>docker compose stop</code>), let a run fail at <code>load</code>, start it again, and <strong>clear</strong> only the failed task. Extract and parse must not rerun.</li>
+<li>Clear a successful run&rsquo;s <code>extract</code> with downstream tasks included and confirm the row count is unchanged.</li>
+<li>Add an <code>on_failure_callback</code> to <code>default_args</code> that logs a one-line summary (Dag id, task id, logical date, exception). In production this is where an alert would go.</li>
+</ul>
+<h3 id="exercise-85-data-aware-scheduling-with-assets">Exercise 8.5: data-aware scheduling with Assets</h3>
+<p>Declare <code>daily_weather = Asset(name="daily_weather")</code> (import <code>Asset</code> from <code>airflow.sdk</code>) in a small shared module, and add it as an <code>outlet</code> on the <code>load</code> task. Then write a second Dag, <code>weather_report</code>, with <code>schedule=[daily_weather]</code>. Its one task queries the last 7 days per city and logs the warmest and wettest day. It runs only when <code>load</code> succeeds, with no time-based schedule at all. Add it to your integrity and structure tests.</p>
+<h3 id="checkpoint-8">Checkpoint 8</h3>
+<ul>
+<li class="task"><input type="checkbox" id="cb25" data-key="cb25"><label for="cb25">September 2026 is fully loaded: 30 days × 3 cities = 90 rows, and a second backfill leaves 90.</label></li>
+<li class="task"><input type="checkbox" id="cb26" data-key="cb26"><label for="cb26">You can explain the retry bug and the sensor fix in two sentences.</label></li>
+<li class="task"><input type="checkbox" id="cb27" data-key="cb27"><label for="cb27">A successful <code>weather_etl</code> run triggers <code>weather_report</code> automatically.</label></li>
+</ul>
+</section>
+<section id="sec-module-9-capstone-and-stretch-goals-open-ended" data-sec="module-9-capstone-and-stretch-goals-open-ended"><h2 id="module-9-capstone-and-stretch-goals-open-ended">Module 9: Capstone and stretch goals (open-ended)</h2>
+<p>Pick at least three of these. Each one deepens either Airflow or Python, and each must keep <code>scripts/check.sh</code> green.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Stretch</th>
+<th>Main skill</th>
+<th>What to build</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Per-city mapping</td>
+<td>Airflow: dynamic task mapping</td>
+<td>Make <code>extract</code> and <code>parse</code> take one city each and fan out with <code>.expand(city=...)</code>. One city&rsquo;s failure should not block the others&rsquo; parsing. Pass the city list as a task output, not a top-level constant read at parse time.</td>
+</tr>
+<tr>
+<td>A keyed API</td>
+<td>Airflow: Connections and secrets</td>
+<td>Add a second source that needs an API key (for example OpenWeatherMap). Store the key in a Connection set through <code>AIRFLOW_CONN_...</code>, never in code, and test that it never appears in a log line.</td>
+</tr>
+<tr>
+<td>Generic JSONL helpers</td>
+<td>Python: generics and Protocols</td>
+<td>Remove the duplication between <code>HourlyObservation</code> and <code>DailySummary</code>: one <code>write_jsonl[T]</code> / <code>read_jsonl[T]</code> pair using PEP 695 generic syntax and a <code>Protocol</code> for <code>to_json</code>/<code>from_json</code>.</td>
+</tr>
+<tr>
+<td>Pydantic parser</td>
+<td>Python: libraries vs hand-rolled</td>
+<td>Reimplement <code>parse_payload</code> with pydantic models. Keep your existing tests unchanged and make them pass; compare the code size and the error messages.</td>
+</tr>
+<tr>
+<td>Custom operator</td>
+<td>Airflow: operators and templating</td>
+<td>Write <code>OpenMeteoToFileOperator</code> with templated fields for the day and output path. Test it by calling <code>op.execute(context={})</code> and <code>op.render_template_fields(...)</code>, as in <a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/best-practices.html#unit-tests">Best Practices</a>.</td>
+</tr>
+<tr>
+<td>SQL quality checks</td>
+<td>Airflow: provider operators</td>
+<td>Replace your <code>verify</code> task with <code>SQLColumnCheckOperator</code> and <code>SQLTableCheckOperator</code> from the common-sql provider: no null cities, temperatures within -60 to 60 °C, three rows per day.</td>
+</tr>
+<tr>
+<td>Run parameters</td>
+<td>Airflow: Params</td>
+<td>Add a <code>cities</code> Param so a manual trigger can run for a subset of cities, validated in the trigger form.</td>
+</tr>
+<tr>
+<td>Split components</td>
+<td>Airflow: architecture</td>
+<td>Run the official <a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/howto/docker-compose/index.html">Docker Compose setup</a> with your project mounted, and identify each container against the diagram in Module 1.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="definition-of-done-for-the-course">Definition of done for the course</h3>
+<ul>
+<li class="task"><input type="checkbox" id="cb28" data-key="cb28"><label for="cb28"><code>weather_etl</code> and <code>weather_report</code> run daily without intervention, and a one-month backfill is idempotent.</label></li>
+<li class="task"><input type="checkbox" id="cb29" data-key="cb29"><label for="cb29">The whole suite passes: unit, Dag, integration and one e2e run.</label></li>
+<li class="task"><input type="checkbox" id="cb30" data-key="cb30"><label for="cb30"><code>src/weather</code> has no Airflow imports; <code>dags/</code> has no business logic.</label></li>
+<li class="task"><input type="checkbox" id="cb31" data-key="cb31"><label for="cb31">You can explain, without notes, why each task is idempotent and what happens when each one fails.</label></li>
+</ul>
+</section>
+<section id="sec-reference" data-sec="reference"><h2 id="reference">Reference</h2>
+<h3 id="commands-you-will-use-daily">Commands you will use daily</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>source .venv/bin/activate &amp;&amp; source env.sh</code></td>
+<td>Start of every terminal session</td>
+</tr>
+<tr>
+<td><code>airflow standalone</code></td>
+<td>Run all components locally</td>
+</tr>
+<tr>
+<td><code>python dags/weather_etl.py</code></td>
+<td>Loader test: does the file parse?</td>
+</tr>
+<tr>
+<td><code>airflow dags list-import-errors</code></td>
+<td>Why a Dag is missing from the UI</td>
+</tr>
+<tr>
+<td><code>airflow dags test weather_etl 2026-10-01</code></td>
+<td>Run a whole Dag once, no scheduler</td>
+</tr>
+<tr>
+<td><code>airflow tasks test weather_etl parse 2026-10-01</code></td>
+<td>Run one task, no state recorded</td>
+</tr>
+<tr>
+<td><code>airflow backfill create --dag-id weather_etl --from-date ... --to-date ...</code></td>
+<td>Load a historical range</td>
+</tr>
+<tr>
+<td><code>airflow config get-value core dags_folder</code></td>
+<td>Check which folder Airflow reads</td>
+</tr>
+<tr>
+<td><code>scripts/check.sh</code></td>
+<td>Lint, type-check and fast tests</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="common-problems">Common problems</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dag missing from the UI</td>
+<td>Import error, the <code>@dag</code> function never called at the bottom of the file, <code>env.sh</code> not sourced, or the Dag processor has not re-parsed yet (wait 30 seconds)</td>
+</tr>
+<tr>
+<td><code>ModuleNotFoundError: weather</code> in a task</td>
+<td>Package not installed with <code>-e</code> into the same venv Airflow runs from</td>
+</tr>
+<tr>
+<td>Different password or empty UI</td>
+<td>A terminal without <code>AIRFLOW_HOME</code> exported, so a second Airflow home under <code>~/airflow</code></td>
+</tr>
+<tr>
+<td>Constraints URL returns 404</td>
+<td>Your Python version is not supported by that Airflow release</td>
+</tr>
+<tr>
+<td>Imports like <code>airflow.decorators</code> or <code>airflow.models.DAG</code></td>
+<td>An Airflow 2 tutorial; use <code>airflow.sdk</code> (run <code>ruff check --select AIR3</code>)</td>
+</tr>
+<tr>
+<td>Rows duplicate on rerun</td>
+<td>An <code>INSERT</code> without <code>ON CONFLICT</code>, or a date derived from <code>now()</code></td>
+</tr>
+<tr>
+<td>Task fails with an XCom serialization error</td>
+<td>Returning a non-JSON value such as a <code>set</code> or <code>Path</code>; return strings and lists</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sources">Sources</h3>
+<ul>
+<li><a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/start.html">Airflow 3.4.0 Quick Start</a></li>
+<li><a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/best-practices.html">Airflow 3.4.0 Best Practices</a>, including Dag testing and mocking connections</li>
+<li><a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/tutorial/taskflow.html">Airflow 3.4.0 TaskFlow tutorial</a></li>
+<li><a href="https://airflow.apache.org/docs/apache-airflow/3.4.0/core-concepts/index.html">Airflow 3.4.0 Core Concepts</a></li>
+<li><a href="https://open-meteo.com/en/docs/historical-weather-api">Open-Meteo Historical Weather API</a></li>
+<li><a href="https://packaging.python.org/en/latest/guides/writing-pyproject-toml/">Writing pyproject.toml</a></li>
+</ul></section>
+  </main>
+</div>
+<script>
+(function () {
+  var KEY = "airflow-course-progress-v1";
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  var boxes = Array.prototype.slice.call(document.querySelectorAll("li.task input"));
+  boxes.forEach(function (b) { b.checked = !!state[b.dataset.key]; });
+
+  function update() {
+    var done = 0;
+    boxes.forEach(function (b) { if (b.checked) done++; });
+    document.getElementById("done-count").textContent = done;
+    document.getElementById("total-count").textContent = boxes.length;
+    document.querySelectorAll("section[data-sec]").forEach(function (sec) {
+      var id = sec.dataset.sec;
+      var own = sec.querySelectorAll("li.task input");
+      var c = 0;
+      own.forEach(function (b) { if (b.checked) c++; });
+      var countEl = document.querySelector('[data-count="' + id + '"]');
+      var barEl = document.querySelector('[data-bar="' + id + '"]');
+      var link = document.querySelector('[data-nav="' + id + '"]');
+      if (!own.length) { countEl.textContent = ""; barEl.parentNode.classList.add("hidden"); return; }
+      countEl.textContent = c + "/" + own.length;
+      barEl.style.width = (100 * c / own.length) + "%";
+      link.classList.toggle("complete", c === own.length);
+    });
+  }
+  boxes.forEach(function (b) {
+    b.addEventListener("change", function () {
+      if (b.checked) state[b.dataset.key] = true; else delete state[b.dataset.key];
+      save(); update();
+    });
+  });
+  document.getElementById("reset").addEventListener("click", function () {
+    if (!confirm("Clear all checkpoint progress?")) return;
+    state = {}; save();
+    boxes.forEach(function (b) { b.checked = false; });
+    update();
+  });
+  update();
+
+  // Collapse the module list by default on small screens
+  if (window.matchMedia("(max-width: 900px)").matches) {
+    document.querySelector("details.toc").removeAttribute("open");
+  }
+
+  // Highlight the module currently on screen
+  var links = {};
+  document.querySelectorAll("[data-nav]").forEach(function (a) { links[a.dataset.nav] = a; });
+  if ("IntersectionObserver" in window) {
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) {
+          Object.keys(links).forEach(function (k) { links[k].classList.remove("current"); });
+          var l = links[en.target.dataset.sec];
+          if (l) l.classList.add("current");
+        }
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    document.querySelectorAll("section[data-sec]").forEach(function (s) { obs.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>
